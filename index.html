@@ -1,0 +1,169 @@
+
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>英語診断 - GitHub公開版</title>
+  <style>
+    body {
+      font-family: 'Yu Gothic', 'Meiryo', sans-serif;
+      background: linear-gradient(135deg, #667eea, #764ba2);
+      color: #333;
+      margin: 0;
+      padding: 20px;
+    }
+    .container {
+      max-width: 800px;
+      margin: auto;
+      background: #fff;
+      border-radius: 15px;
+      padding: 30px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+    }
+    h1 {
+      text-align: center;
+      color: #2c3e50;
+    }
+    .option {
+      background: #f0f0f0;
+      padding: 10px;
+      margin-top: 10px;
+      border-radius: 8px;
+      cursor: pointer;
+    }
+    .option.selected {
+      background: #667eea;
+      color: white;
+    }
+    button {
+      margin-top: 20px;
+      padding: 10px 25px;
+      border-radius: 10px;
+      font-weight: bold;
+      background: #667eea;
+      color: white;
+      border: none;
+      cursor: pointer;
+    }
+    #result {
+      display: none;
+      margin-top: 30px;
+    }
+    audio {
+      margin-top: 10px;
+    }
+  </style>
+</head>
+<body>
+<div class="container">
+  <h1>🎯 トビーズ英語学習診断システム（30問）</h1>
+  <div id="question-box"></div>
+  <div id="result"></div>
+</div>
+<script>
+const totalQuestions = 30;
+const questions = Array.from({length: totalQuestions}, (_, i) => `質問 ${i+1}：これは仮の質問文です。`);
+const options = Array.from({length: totalQuestions}, () => ["選択肢A", "選択肢B", "選択肢C", "選択肢D"]);
+const correctAnswers = Array.from({length: totalQuestions}, () => 0);
+
+let current = 0;
+let correct = 0;
+const answers = {};
+
+function renderQuestion() {
+  const box = document.getElementById("question-box");
+  const q = questions[current];
+  const opts = options[current];
+  box.innerHTML = `<h3>${q}</h3>`;
+  opts.forEach((opt, i) => {
+    const div = document.createElement("div");
+    div.className = "option";
+    div.textContent = opt;
+    div.onclick = () => {
+      document.querySelectorAll(".option").forEach(el => el.classList.remove("selected"));
+      div.classList.add("selected");
+      answers[current] = i;
+      document.getElementById("next-btn").disabled = false;
+    };
+    box.appendChild(div);
+  });
+  const btn = document.createElement("button");
+  btn.id = "next-btn";
+  btn.textContent = current < totalQuestions - 1 ? "次へ" : "診断結果へ";
+  btn.disabled = true;
+  btn.onclick = next;
+  box.appendChild(btn);
+}
+
+function next() {
+  if (answers[current] === correctAnswers[current]) correct++;
+  current++;
+  if (current < totalQuestions) {
+    renderQuestion();
+  } else {
+    showResult();
+  }
+}
+
+function showResult() {
+  document.getElementById("question-box").style.display = "none";
+  const result = document.getElementById("result");
+  result.style.display = "block";
+  const rate = correct / totalQuestions;
+  let level = rate >= 0.9 ? "英検準1級〜1級 / TOEFL 90〜100点"
+            : rate >= 0.75 ? "英検2級〜準1級 / TOEFL 75〜89点"
+            : rate >= 0.6 ? "英検準2級〜2級 / TOEFL 60〜74点"
+            : "英検3級以下 / TOEFL 〜59点";
+
+  result.innerHTML = `
+    <h2>診断結果</h2>
+    <p>あなたの正解数は <strong>${correct}/${totalQuestions}</strong> です。</p>
+    <p>推定レベル：<strong>${level}</strong></p>
+    <p id="balloon"></p>
+    <img src="https://cdn-icons-png.flaticon.com/512/2729/2729021.png" style="max-width:150px; margin-top:20px;" />
+    <p>🎤 発音練習："I would like to practice my English pronunciation."</p>
+    <button id="record">🔴 録音</button>
+    <button id="play" disabled>▶️ 再生</button>
+    <audio id="audio" controls></audio>
+  `;
+
+  const msg = rate >= 0.75 ? "すばらしい！あなたは英語マスター級です。"
+            : rate >= 0.6 ? "とてもいい感じ！中級に近づいています。"
+            : "ゆっくりで大丈夫、これから一緒にがんばりましょう！";
+
+  document.getElementById("balloon").textContent = msg;
+  const speech = new SpeechSynthesisUtterance(msg);
+  speech.lang = 'ja-JP';
+  speechSynthesis.speak(speech);
+
+  // 発音録音再生
+  let recorder, chunks = [];
+  const recordBtn = document.getElementById("record");
+  const playBtn = document.getElementById("play");
+  const audio = document.getElementById("audio");
+
+  recordBtn.onclick = async () => {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    recorder = new MediaRecorder(stream);
+    recorder.ondataavailable = e => chunks.push(e.data);
+    recorder.onstop = () => {
+      const blob = new Blob(chunks, { type: "audio/wav" });
+      audio.src = URL.createObjectURL(blob);
+      playBtn.disabled = false;
+      chunks = [];
+    };
+    recorder.start();
+    recordBtn.textContent = "⏹️ 停止";
+    recordBtn.onclick = () => {
+      recorder.stop();
+      recordBtn.textContent = "🔴 録音";
+    };
+  };
+  playBtn.onclick = () => audio.play();
+}
+
+renderQuestion();
+</script>
+</body>
+</html>
