@@ -1,0 +1,129 @@
+
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>TOBYS 英語学習診断システム（30問）</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      background: #eef1f5;
+      padding: 20px;
+      text-align: center;
+    }
+    .question-box {
+      background: white;
+      border-radius: 10px;
+      padding: 20px;
+      max-width: 500px;
+      margin: 20px auto;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+    }
+    button {
+      padding: 10px 20px;
+      margin-top: 20px;
+      border: none;
+      border-radius: 5px;
+      background: #4a90e2;
+      color: white;
+      font-weight: bold;
+      cursor: pointer;
+    }
+    button:disabled {
+      background: #ccc;
+      cursor: not-allowed;
+    }
+  </style>
+</head>
+<body>
+  <h1>🎯 トビーズ英語学習診断システム（30問）</h1>
+  <div class="question-box" id="question-container">
+    <div id="question-text">質問を読み込んでいます...</div>
+    <div id="choices"></div>
+    <button id="next-btn" onclick="nextQuestion()" disabled>次へ</button>
+  </div>
+  <div class="question-box" id="result-container" style="display:none;">
+    <h2>診断結果</h2>
+    <p id="score"></p>
+    <p id="toefl"></p>
+    <p id="eiken"></p>
+    <button onclick="location.reload()">もう一度診断する</button>
+  </div>
+
+  <script>
+    const questions = Array.from({ length: 30 }).map((_, i) => ({
+      text: `質問 ${i+1}：これは仮の質問文です。`,
+      options: ["選択肢A", "選択肢B", "選択肢C", "選択肢D"],
+      correct: i % 4 // 仮の正解ロジック
+    }));
+
+    let current = 0;
+    let score = 0;
+
+    const qContainer = document.getElementById("question-container");
+    const qText = document.getElementById("question-text");
+    const qChoices = document.getElementById("choices");
+    const nextBtn = document.getElementById("next-btn");
+
+    function renderQuestion() {
+      const q = questions[current];
+      qText.textContent = q.text;
+      qChoices.innerHTML = "";
+      q.options.forEach((opt, i) => {
+        const btn = document.createElement("button");
+        btn.textContent = opt;
+        btn.onclick = () => {
+          if (i === q.correct) score++;
+          nextBtn.disabled = false;
+        };
+        btn.style.display = "block";
+        btn.style.margin = "10px auto";
+        qChoices.appendChild(btn);
+      });
+      nextBtn.disabled = true;
+    }
+
+    function nextQuestion() {
+      current++;
+      if (current < questions.length) {
+        renderQuestion();
+      } else {
+        showResult();
+      }
+    }
+
+    function showResult() {
+      qContainer.style.display = "none";
+      document.getElementById("result-container").style.display = "block";
+      document.getElementById("score").textContent = `正解数：${score} / ${questions.length}`;
+
+      const percent = score / questions.length;
+      let toefl = "", eiken = "";
+
+      if (percent >= 0.9) {
+        toefl = "TOEFLスコア目安：90〜100点";
+        eiken = "英検：準1級〜1級レベル";
+      } else if (percent >= 0.75) {
+        toefl = "TOEFLスコア目安：75〜89点";
+        eiken = "英検：2級〜準1級レベル";
+      } else if (percent >= 0.6) {
+        toefl = "TOEFLスコア目安：60〜74点";
+        eiken = "英検：準2級〜2級レベル";
+      } else {
+        toefl = "TOEFLスコア目安：〜59点";
+        eiken = "英検：3級以下レベル";
+      }
+
+      document.getElementById("toefl").textContent = toefl;
+      document.getElementById("eiken").textContent = eiken;
+
+      const utter = new SpeechSynthesisUtterance(`あなたのスコアは ${score} 点です。${toefl}、${eiken} に相当します。`);
+      utter.lang = "ja-JP";
+      speechSynthesis.speak(utter);
+    }
+
+    renderQuestion();
+  </script>
+</body>
+</html>
